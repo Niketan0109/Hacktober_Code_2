@@ -1,0 +1,93 @@
+
+#include <stdio.h>
+#include <pthread.h>
+#include <semaphore.h>
+#define N 5
+#define EATING 0
+#define HUNGRY 1
+#define THINKING 2
+#define LEFT (pnum + 4) % N
+#define RIGHT (pnum + 1) % N
+
+int state[N];
+int phil[N] = { 0, 1, 2, 3, 4 };
+
+sem_t mutex;
+sem_t S[N];
+
+void test(int pnum)
+{
+	if (state[pnum] == HUNGRY&& state[LEFT] != EATING&& state[RIGHT] != EATING) {
+		state[pnum] = EATING;
+
+		sleep(2);
+
+		printf("Philosopher %d takes fork %d and %d\n",pnum + 1, LEFT + 1, pnum + 1);
+
+		printf("Philosopher %d is Eating\n", pnum + 1);
+		sem_post(&S[pnum]);
+	}
+}
+void take_fork(int pnum)
+{
+
+	sem_wait(&mutex);
+	state[pnum] = HUNGRY;
+
+	printf("Philosopher %d is Hungry\n", pnum + 1);
+	test(pnum);
+
+	sem_post(&mutex);
+	sem_wait(&S[pnum]);
+
+	sleep(1);
+}
+void put_fork(int pnum)
+{
+
+	sem_wait(&mutex);
+	state[pnum] = THINKING;
+
+	printf("Philosopher %d putting fork %d and %d down\n",pnum + 1, LEFT + 1, pnum + 1);
+	printf("Philosopher %d is thinking\n", pnum + 1);
+
+	test(LEFT);
+	test(RIGHT);
+
+	sem_post(&mutex);
+}
+
+void* philospher(void* num)
+{
+
+	while (1) {
+
+		int* i = num;
+       sleep(1);
+	   take_fork(*i);
+        sleep(0);
+		put_fork(*i);
+	}
+}
+
+int main()
+{
+
+	int i;
+	pthread_t thread_id[N];
+	sem_init(&mutex, 0, 1);
+
+	for (i = 0; i < N; i++)
+
+		sem_init(&S[i], 0, 0);
+
+	for (i = 0; i < N; i++) {
+		pthread_create(&thread_id[i], NULL,philospher, &phil[i]);
+
+		printf("Philosopher %d is thinking\n", i + 1);
+	}
+
+	for (i = 0; i < N; i++)
+
+		pthread_join(thread_id[i], NULL);
+}
